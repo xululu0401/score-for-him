@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>替他打个分</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f4f1ec; color: #2b2622; line-height: 1.6; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 20px 14px 40px; }
+  h1 { font-size: 26px; letter-spacing: 1px; }
+  .lead { color: #5e554c; font-size: 14px; margin: 4px 0 14px; }
+  .card { background: #fff; border-radius: 10px; padding: 14px; border: 1px solid #e2dbd1; margin-bottom: 14px; min-width: 0; }
+  .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 8px; overflow-wrap: anywhere; }
+  label { font-size: 12px; color: #5e554c; display: block; overflow-wrap: anywhere; }
+  input, textarea, select { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid #cbbfb0; border-radius: 6px; width: 100%; min-width: 0; background: #fff; font-variant-numeric: tabular-nums; }
+  textarea { resize: vertical; min-height: 170px; line-height: 1.55; font-family: ui-monospace, Menlo, "PingFang SC", monospace; white-space: pre; overflow-x: auto; }
+  .inGrid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; }
+  .g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .g2 > div { min-width: 0; }
+  .bad { border-color: #b3412f !important; background: #fff0ec !important; }
+  button { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 6px; border: 1px solid #8a4b2a; background: #8a4b2a; color: #fff; cursor: pointer; }
+  button.ghost { background: #fff; color: #8a4b2a; }
+  .presets, .dl { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .err { display: none; background: #fff0ec; border: 1px solid #ecb7aa; color: #8e2b1c; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; overflow-wrap: anywhere; }
+  .muted { color: #857a6e; font-size: 12px; }
+  .stamp { display: inline-block; border: 3px solid #2f6b4f; color: #2f6b4f; border-radius: 8px; padding: 2px 10px; font-weight: 800; font-size: 17px; transform: rotate(-3deg); white-space: nowrap; margin-right: 8px; }
+  .stamp.some { border-color: #a5741d; color: #a5741d; } .stamp.weak { border-color: #b3412f; color: #b3412f; }
+  #summary { font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+  .kpi { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+  .kpi > div { background: #f7f3ee; border-radius: 8px; padding: 10px; min-width: 0; }
+  .kpi .k { font-size: 12px; color: #5e554c; overflow-wrap: anywhere; } .kpi .v { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.25; overflow-wrap: anywhere; }
+  .kpi .main { background: #fbeee4; border: 2px solid #8a4b2a; }
+  #facts { margin: 10px 0 0 18px; font-size: 14px; } #facts li { margin: 3px 0; overflow-wrap: anywhere; }
+  /* 填好的表 */
+  .tblBox { overflow-x: auto; max-width: 100%; }
+  table.grid { border-collapse: separate; border-spacing: 3px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  table.grid th { font-weight: 600; color: #5e554c; font-size: 12px; padding: 2px 4px; max-width: 6.5em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+  table.grid th.row { text-align: left; color: #2b2622; }
+  table.grid td { width: 52px; min-width: 44px; height: 36px; text-align: center; border-radius: 5px; font-weight: 700; }
+  table.grid td.g { font-weight: 600; font-style: italic; border: 2px dashed #8a4b2a; }
+  table.grid td.best { box-shadow: 0 0 0 2px #2b2622 inset; }
+  table.grid tr.inG th.row { color: #8a4b2a; }
+  table.grid th.pick { color: #fff; background: #8a4b2a; border-radius: 4px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: #5e554c; margin-top: 6px; }
+  .legend i { display: inline-block; width: 16px; height: 12px; vertical-align: -1px; margin-right: 4px; border-radius: 3px; }
+  /* 验算 */
+  .cvRow { display: grid; grid-template-columns: minmax(90px, 11em) minmax(0, 1fr) 4.5em; gap: 8px; align-items: center; font-size: 13px; padding: 3px 0; }
+  .cvRow .bar { height: 12px; background: #f1ebe4; border-radius: 3px; overflow: hidden; }
+  .cvRow .bar i { display: block; height: 100%; background: #c9a68c; }
+  .cvRow.cur .bar i { background: #8a4b2a; } .cvRow.best span:first-child { font-weight: 800; }
+  .cvRow span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  #map { width: 100%; height: auto; display: block; }
+  #sugs { display: grid; gap: 8px; }
+  .sug { display: flex; gap: 10px; align-items: center; justify-content: space-between; border: 1px solid #e2dbd1; border-radius: 6px; padding: 8px 10px; }
+  .sug span { min-width: 0; overflow-wrap: anywhere; font-size: 14px; } .sug button { flex: none; }
+  .how { font-size: 13px; } .how p { margin: 6px 0; }
+  @media (max-width: 760px) { .inGrid { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 520px) { .kpi { grid-template-columns: minmax(0, 1fr); } .kpi .v { font-size: 22px; } .sug { flex-direction: column; align-items: stretch; } #summary { font-size: 16px; }
+    table.grid td { width: 40px; min-width: 36px; font-size: 12px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>替他打个分</h1>
+  <p class="lead">一张打分表，谁看过什么、打了几分，空着的就是没看过。这里按大家打过的分，把空格一个个猜上：每个人没看过的里最可能喜欢哪个，一家人一起看挑哪部，再把打过的分轮流藏起来重猜一遍，告诉你这样猜平均差几分、比直接看平均分强多少。片子也可以换成餐馆、书、菜。默认例子的片名和分数是虚构的。</p>
+
+  <div class="card">
+    <div class="inGrid">
+      <div>
+        <label for="data">打分表：第一行「谁」加片名，下面每行一个人；没看过写「-」。空格或逗号分开都行</label>
+        <textarea id="data" maxlength="4000" spellcheck="false"></textarea>
+      </div>
+      <div>
+        <div class="g2">
+          <div><label for="lo">最低分</label><input id="lo" maxlength="5" inputmode="decimal"></div>
+          <div><label for="hi">最高分</label><input id="hi" maxlength="5" inputmode="decimal"></div>
+          <div><label for="rank">怎么猜</label><select id="rank"><option value="0">平均+偏好+口碑</option><option value="1">1 个口味方向</option><option value="2">2 个口味方向</option><option value="3">3 个口味方向</option></select></div>
+          <div><label for="lambda">收紧力度 λ（0.1–20）</label><input id="lambda" maxlength="5" inputmode="decimal"></div>
+        </div>
+        <div style="margin-top:8px"><label for="group">谁一起看（空着 = 全部；人名用空格隔开）</label><input id="group" maxlength="200"></div>
+        <div style="margin-top:8px"><label for="rule">一起看怎么挑</label><select id="rule"><option value="mean">平均分最高</option><option value="min">照顾最低的人（最低分最高）</option></select></div>
+      </div>
+    </div>
+    <div class="presets" id="presets"></div>
+  </div>
+
+  <div class="err" id="error"></div>
+  <div id="out">
+    <div class="card">
+      <div id="summary"><span class="stamp" id="stamp"></span><span id="sumTxt"></span></div>
+      <div class="kpi">
+        <div class="main"><div class="k" id="k1">一起看挑</div><div class="v" id="v1"></div></div>
+        <div><div class="k" id="k2">猜上的空格</div><div class="v" id="v2"></div></div>
+        <div><div class="k" id="k3">验算平均差</div><div class="v" id="v3"></div></div>
+      </div>
+      <ul id="facts"></ul>
+    </div>
+    <div class="card">
+      <h2>填好的表（虚线框斜体 = 猜的，黑框 = 这个人没看过的里猜分最高的）</h2>
+      <div class="tblBox"><table class="grid" id="grid"></table></div>
+      <div class="legend"><span><i style="background:#c4553a"></i>低分</span><span><i style="background:#efe6da"></i>中间</span><span><i style="background:#3f8a5f"></i>高分</span><span>棕色表头 = 一起看挑的那部；棕色人名 = 一起看的人</span></div>
+    </div>
+    <div class="card">
+      <h2>留一验算：每个打过的分轮流藏起来再猜，平均差几分（越短越准）</h2>
+      <div id="cv"></div>
+      <p class="muted" id="cvNote" style="margin-top:4px"></p>
+    </div>
+    <div class="card">
+      <h2>口味地图（人和片子越朝同一个方向、离中心越远，口味加分越多）</h2>
+      <canvas id="map" width="960" height="520"></canvas>
+      <p class="muted" id="mapNote"></p>
+    </div>
+    <div class="card" id="sugCard">
+      <h2>换个算法（点一下代回重算）</h2>
+      <div id="sugs"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>带走结果</h2>
+    <div class="dl">
+      <button id="dlCSV">CSV 每一格</button><button id="dlMD">Markdown 小结</button><button id="dlPNG">结果卡 PNG</button><button id="dlJSON" class="ghost">JSON 备份</button>
+      <button id="reset" class="ghost">恢复默认</button>
+    </div>
+    <p class="muted" style="margin-top:6px">输入自动保存在这台设备的浏览器里，刷新还在；不上传。</p>
+  </div>
+
+  <div class="card how">
+    <h2>怎么算的</h2>
+    <p><b>猜分</b> = 全体平均 + 这个人的偏好（打分松还是紧）+ 这部片的口碑（大家普遍给高还是低）+ 口味加分。口味加分是「人的口味方向」和「片子的口味方向」的点乘：喜欢动作片的人碰上动作片就加分，碰上文艺片就减分。方向数选 0 就只用前三项。猜出来的分夹在最低分和最高分之间。</p>
+    <p><b>怎么定这些数</b>：让「猜分和已打的分的差的平方和」加上「λ × 所有偏好、口碑、口味数的平方和」尽量小。λ 越大，各项越被往 0 收，表小的时候能防止硬凑。求法是交替最小二乘：固定片子解每个人，再固定人解每部片，轮流做到不再变小，起点用固定种子，结果每次一样。</p>
+    <p><b>口味地图</b>：把口味加分那张表做奇异值分解，取前两个方向画出来；两点的点乘就是口味加分。份额 = 每个方向的奇异值平方占总和的比例。</p>
+    <p><b>留一验算</b>：每个打过的分轮流藏起来，用剩下的从头重新算一遍，再猜这一格，和真实分比，差的绝对值取平均。几种猜法各验一遍，和「只看全体平均」比：只有它的八成或更少叫「猜得有谱」，八成到九成五叫「比平均强一点」，再多叫「不如直接看平均」。</p>
+    <p><b>一起看</b>：候选是这群人都没看过的片子；没有的话就从全部里挑。每个人用自己打过的分，没打过的用猜分，按平均分或最低的那个人的分排。</p>
+    <p class="muted">只按这张表里的分来猜，不知道片子的类型、演员，也不知道谁是因为没兴趣才没看。表越小、空格越多越不准，看留一验算的数字。默认例子是虚构的，不是哪家平台的数据。</p>
+  </div>
+</div>
+
+  <script>
+/* 替他打个分 · 计算核心
+ * 场景：一张「谁 × 片子（或餐馆、书、菜）」打分表，有的格子空着（没看过/没去过）。
+ *       按「大家打过的分」把空格猜上，看每个人没看过的里最可能喜欢哪个、一群人一起看挑哪个，并用留一验算说清猜得有多准。
+ * 模型（设计选择，不是定论）：猜分 = 全体平均 μ + 这个人的偏好 b_u + 这部片的口碑 c_i + 口味加分 p_u·q_i，
+ *       p_u、q_i 是 k 维「口味方向」（k = 0–3；0 表示只用平均+偏好+口碑）。
+ * 拟合：最小化 Σ_已打分 (r − 猜分)² + λ(Σb² + Σc² + Σ|p|² + Σ|q|²)，交替最小二乘（每一步对一个人或一部片解小的岭回归，
+ *       损失单调不增），固定种子初始化，结果可复现。猜分夹在分数范围内。
+ * 口味地图：把口味加分矩阵 M = P·Qᵀ 做奇异值分解 M = U S Vᵀ，人画在 U·√S，片子画在 V·√S，两点的点乘就是口味加分；
+ *       每个方向撑起的份额 = σ² / Σσ²。
+ * 留一验算：每个已打分的格子轮流藏起来，用其余格子重新拟合再猜它，和真实分比，算平均差（绝对值平均）。
+ *       对「只看全体平均」「平均+偏好+口碑」「1/2/3 个口味方向」都算一遍，最小的那档叫「验算最准」。
+ * 不做：真实影片评分数据、隐式反馈（看没看过本身）、时间变化、冷启动的内容特征、大规模稀疏矩阵。 */
+(function (root) {
+  'use strict';
+  function Bad(message, field) { const e = new Error(message); e.field = field; return e; }
+  const KEYS = ['data', 'lo', 'hi', 'rank', 'lambda', 'group', 'rule'];
+  const MAX_P = 10, MAX_I = 12, MAX_NAME = 12;
+  const BLANK = /^(-|—|–|\?|？|x|X|空|没看|未看)?$/;
+
+  function fmt(x, d) { if (x == null || !isFinite(x)) return '—'; const s = (Math.round(x * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d); return d > 0 ? s.replace(/\.?0+$/, '') : s; }
+  const f1 = (x) => (x == null || !isFinite(x) ? '—' : (Math.round(x * 10) / 10).toFixed(1));
+  const f2 = (x) => (x == null || !isFinite(x) ? '—' : (Math.round(x * 100) / 100).toFixed(2));
+
+  function num(v, name, field, lo, hi) {
+    const t = String(v).trim();
+    if (!/^-?\d+(\.\d+)?$/.test(t)) throw Bad(name + '要写数字', field);
+    const x = +t;
+    if (x < lo || x > hi) throw Bad(name + '在 ' + lo + ' 到 ' + hi + ' 之间', field);
+    return x;
+  }
+  function cellsOf(line) {
+    if (/[,，\t]/.test(line)) return line.split(/[,，\t]/).map((s) => s.trim());
+    return line.trim().split(/[ 　]+/);
+  }
+  function parseData(text, lo, hi) {
+    const lines = String(text).split(/\r?\n/).map((s) => s.replace(/#.*$/, '')).map((s, i) => ({ s, n: i + 1 })).filter((x) => x.s.trim());
+    if (!lines.length) throw Bad('第一行写「谁」和各个片名，下面每行写一个人和他打的分', 'data');
+    const head = cellsOf(lines[0].s);
+    const items = head.slice(1).filter((x, i, a) => !(i === a.length - 1 && x === ''));
+    if (items.length < 2) throw Bad('第 ' + lines[0].n + ' 行（表头）至少要 2 个片名', 'data');
+    if (items.length > MAX_I) throw Bad('片子最多 ' + MAX_I + ' 个', 'data');
+    items.forEach((w, j) => {
+      if (!w) throw Bad('表头第 ' + (j + 2) + ' 列片名是空的', 'data');
+      if (w.length > MAX_NAME) throw Bad('片名「' + w.slice(0, 16) + '」太长了（最多 ' + MAX_NAME + ' 个字）', 'data');
+      if (items.indexOf(w) !== j) throw Bad('片名「' + w + '」重复了', 'data');
+    });
+    const people = [], R = [];
+    lines.slice(1).forEach(({ s, n }) => {
+      const c = cellsOf(s);
+      const who = c[0];
+      if (!who) throw Bad('第 ' + n + ' 行开头要写人名', 'data');
+      if (who.length > MAX_NAME) throw Bad('第 ' + n + ' 行人名太长了（最多 ' + MAX_NAME + ' 个字）', 'data');
+      if (people.indexOf(who) >= 0) throw Bad('第 ' + n + ' 行「' + who + '」重复了', 'data');
+      let v = c.slice(1);
+      while (v.length > items.length && v[v.length - 1] === '') v.pop();
+      while (v.length < items.length && /[,，\t]/.test(s)) v.push('');
+      if (v.length !== items.length) throw Bad('第 ' + n + ' 行有 ' + v.length + ' 个分，表头有 ' + items.length + ' 个片名；没看过的写「-」', 'data');
+      const row = v.map((t, j) => {
+        if (BLANK.test(t)) return null;
+        if (!/^-?\d+(\.\d+)?$/.test(t)) throw Bad('第 ' + n + ' 行第 ' + (j + 2) + ' 列「' + t.slice(0, 8) + '」不是分数；没看过的写「-」', 'data');
+        const x = +t;
+        if (x < lo || x > hi) throw Bad('第 ' + n + ' 行「' + items[j] + '」' + x + ' 分不在 ' + fmt(lo, 2) + '–' + fmt(hi, 2) + ' 之间', 'data');
+        return x;
+      });
+      people.push(who); R.push(row);
+      if (people.length > MAX_P) throw Bad('人最多 ' + MAX_P + ' 个', 'data');
+    });
+    if (people.length < 2) throw Bad('至少要 2 个人打分，才谈得上「按别人的口味猜」', 'data');
+    const known = [];
+    R.forEach((row, u) => row.forEach((x, i) => { if (x != null) known.push([u, i, x]); }));
+    if (known.length < 3) throw Bad('至少要 3 个已打的分', 'data');
+    if (known.length === people.length * items.length) throw Bad('表里没有空格，没有要猜的；没看过的写「-」', 'data');
+    return { people, items, R, known };
+  }
+  function parse(inp) {
+    const lo = num(inp.lo, '最低分', 'lo', 0, 100), hi = num(inp.hi, '最高分', 'hi', 0, 100);
+    if (!(hi > lo)) throw Bad('最高分要大于最低分', 'hi');
+    const d = parseData(inp.data, lo, hi);
+    const rk = String(inp.rank).trim();
+    if (!/^[0-3]$/.test(rk)) throw Bad('口味方向数只能是 0、1、2、3', 'rank');
+    const rank = +rk;
+    if (rank > Math.min(d.people.length, d.items.length) - 1) throw Bad('口味方向数最多是 人数和片数里小的那个减 1（现在最多 ' + (Math.min(d.people.length, d.items.length) - 1) + '）', 'rank');
+    const lambda = num(inp.lambda, '收紧力度 λ', 'lambda', 0.1, 20);
+    const rule = String(inp.rule).trim();
+    if (rule !== 'mean' && rule !== 'min') throw Bad('一起看的挑法只能是 mean 或 min', 'rule');
+    const gt = String(inp.group).replace(/[，,、；;]/g, ' ').trim();
+    let group;
+    if (!gt || gt === '全部' || gt === '所有人') group = d.people.map((x, i) => i);
+    else {
+      const names = gt.split(/\s+/);
+      group = [];
+      names.forEach((nm) => {
+        const i = d.people.indexOf(nm);
+        if (i < 0) throw Bad('一起看的人里「' + nm.slice(0, 12) + '」不在表里', 'group');
+        if (group.indexOf(i) < 0) group.push(i);
+      });
+    }
+    return Object.assign(d, { lo, hi, rank, lambda, rule, group, groupAll: group.length === d.people.length });
+  }
+
+  /* ── 线性代数小件 ── */
+  function solve(A, b) { /* 高斯消元（部分主元），A 对称正定、维数 ≤ 4 */
+    const n = b.length, M = A.map((r, i) => r.concat([b[i]]));
+    for (let c = 0; c < n; c++) {
+      let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+      const t = M[c]; M[c] = M[p]; M[p] = t;
+      for (let r = c + 1; r < n; r++) { const f = M[r][c] / M[c][c]; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+    }
+    const x = new Array(n).fill(0);
+    for (let r = n - 1; r >= 0; r--) { let s = M[r][n]; for (let k = r + 1; k < n; k++) s -= M[r][k] * x[k]; x[r] = s / M[r][r]; }
+    return x;
+  }
+  function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+  /* 交替最小二乘。known: [[u,i,r]...]；返回 {mu,b,c,P,Q,loss,iters} */
+  function fit(nP, nI, known, k, lambda, init, maxIt) {
+    const mu = known.reduce((s, x) => s + x[2], 0) / known.length;
+    let b, c, P, Q;
+    if (init) { b = init.b.slice(); c = init.c.slice(); P = init.P.map((r) => r.slice()); Q = init.Q.map((r) => r.slice()); }
+    else {
+      const g = rng(20261125);
+      b = new Array(nP).fill(0); c = new Array(nI).fill(0);
+      P = Array.from({ length: nP }, () => Array.from({ length: k }, () => (g() - 0.5) * 0.2));
+      Q = Array.from({ length: nI }, () => Array.from({ length: k }, () => (g() - 0.5) * 0.2));
+    }
+    const byU = Array.from({ length: nP }, () => []), byI = Array.from({ length: nI }, () => []);
+    known.forEach((x) => { byU[x[0]].push(x); byI[x[1]].push(x); });
+    const lossOf = () => {
+      let s = 0; known.forEach(([u, i, r]) => { let e = r - mu - b[u] - c[i]; for (let d = 0; d < k; d++) e -= P[u][d] * Q[i][d]; s += e * e; });
+      let g = 0; b.forEach((x) => { g += x * x; }); c.forEach((x) => { g += x * x; });
+      P.forEach((r) => r.forEach((x) => { g += x * x; })); Q.forEach((r) => r.forEach((x) => { g += x * x; }));
+      return s + lambda * g;
+    };
+    /* 一个人（或一部片）的小岭回归：特征 [1, 对方的口味向量]，目标 r − μ − 对方的偏置 */
+    const step = (list, selfIsU, other, otherBias, selfBias, selfVec, idx) => {
+      const n = k + 1, A = Array.from({ length: n }, (_, a) => Array.from({ length: n }, (_, b2) => (a === b2 ? lambda : 0))), y = new Array(n).fill(0);
+      list.forEach((x) => {
+        const o = selfIsU ? x[1] : x[0], f = [1].concat(other[o]), t = x[2] - mu - otherBias[o];
+        for (let a = 0; a < n; a++) { y[a] += f[a] * t; for (let b2 = 0; b2 < n; b2++) A[a][b2] += f[a] * f[b2]; }
+      });
+      const th = solve(A, y);
+      selfBias[idx] = th[0]; for (let d = 0; d < k; d++) selfVec[idx][d] = th[d + 1];
+    };
+    /* 停止条件：一整轮里所有参数的最大变化 < 1e-10（按损失判停在参数上会偏松） */
+    const snap = () => b.concat(c, ...P, ...Q);
+    let it = 0, prev = snap();
+    for (; it < (maxIt || 2000); it++) {
+      for (let u = 0; u < nP; u++) step(byU[u], true, Q, c, b, P, u);
+      for (let i = 0; i < nI; i++) step(byI[i], false, P, b, c, Q, i);
+      const cur = snap();
+      let mx = 0; for (let t = 0; t < cur.length; t++) mx = Math.max(mx, Math.abs(cur[t] - prev[t]));
+      prev = cur;
+      if (mx < 1e-10) { it++; break; }
+    }
+    return { mu, b, c, P, Q, loss: lossOf(), iters: it, k, lambda };
+  }
+  function raw(m, u, i) { let s = m.mu + m.b[u] + m.c[i]; for (let d = 0; d < m.k; d++) s += m.P[u][d] * m.Q[i][d]; return s; }
+  const clip = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
+
+  /* 留一验算：level = -1 只看全体平均；0..3 = 偏置 + k 个口味方向 */
+  function loo(D, level, lambda) {
+    const errs = [];
+    D.known.forEach((h, j) => {
+      const rest = D.known.filter((_, t) => t !== j);
+      let g;
+      if (level < 0) g = rest.reduce((s, x) => s + x[2], 0) / rest.length;
+      else { const m = fit(D.people.length, D.items.length, rest, level, lambda, null, 400); g = raw(m, h[0], h[1]); }
+      g = clip(g, D.lo, D.hi);
+      errs.push({ u: h[0], i: h[1], r: h[2], g, e: g - h[2] });
+    });
+    const mae = errs.reduce((s, x) => s + Math.abs(x.e), 0) / errs.length;
+    const rmse = Math.sqrt(errs.reduce((s, x) => s + x.e * x.e, 0) / errs.length);
+    return { level, mae, rmse, errs };
+  }
+
+  /* 对称矩阵特征分解（循环 Jacobi） */
+  function jacobi(S) {
+    const n = S.length, A = S.map((r) => r.slice()), V = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+    for (let sweep = 0; sweep < 100; sweep++) {
+      let off = 0; for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) off += A[p][q] * A[p][q];
+      if (off < 1e-26) break;
+      for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) {
+        if (Math.abs(A[p][q]) < 1e-300) continue;
+        const th = (A[q][q] - A[p][p]) / (2 * A[p][q]);
+        const t = Math.sign(th || 1) / (Math.abs(th) + Math.sqrt(th * th + 1)), cs = 1 / Math.sqrt(t * t + 1), sn = t * cs;
+        for (let r = 0; r < n; r++) { const a = A[r][p], b2 = A[r][q]; A[r][p] = cs * a - sn * b2; A[r][q] = sn * a + cs * b2; }
+        for (let r = 0; r < n; r++) { const a = A[p][r], b2 = A[q][r]; A[p][r] = cs * a - sn * b2; A[q][r] = sn * a + cs * b2; }
+        for (let r = 0; r < n; r++) { const a = V[r][p], b2 = V[r][q]; V[r][p] = cs * a - sn * b2; V[r][q] = sn * a + cs * b2; }
+      }
+    }
+    return { vals: A.map((r, i) => r[i]), vecs: V };
+  }
+  /* M = P Qᵀ 的前 k 个奇异值与左右奇异向量（符号固定：每个方向里绝对值最大的片子分量取正） */
+  function svdTaste(m, nP, nI) {
+    const k = m.k; if (!k) return { sv: [], U: [], V: [] };
+    const M = Array.from({ length: nP }, (_, u) => Array.from({ length: nI }, (_, i) => { let s = 0; for (let d = 0; d < k; d++) s += m.P[u][d] * m.Q[i][d]; return s; }));
+    const MtM = Array.from({ length: nI }, (_, a) => Array.from({ length: nI }, (_, b2) => { let s = 0; for (let u = 0; u < nP; u++) s += M[u][a] * M[u][b2]; return s; }));
+    const E = jacobi(MtM);
+    const ord = E.vals.map((v, i) => i).sort((a, b2) => E.vals[b2] - E.vals[a]).slice(0, k);
+    const sv = [], U = Array.from({ length: nP }, () => []), V = Array.from({ length: nI }, () => []);
+    ord.forEach((j) => {
+      const s = Math.sqrt(Math.max(0, E.vals[j]));
+      let v = E.vecs.map((r) => r[j]);
+      let big = 0; v.forEach((x, i) => { if (Math.abs(x) > Math.abs(v[big])) big = i; }); if (v[big] < 0) v = v.map((x) => -x);
+      sv.push(s);
+      v.forEach((x, i) => V[i].push(x));
+      for (let u = 0; u < nP; u++) { let t = 0; for (let i = 0; i < nI; i++) t += M[u][i] * v[i]; U[u].push(s > 1e-12 ? t / s : 0); }
+    });
+    return { sv, U, V, M };
+  }
+
+  const LEVEL_NAME = (l) => (l < 0 ? '只看全体平均' : l === 0 ? '平均+偏好+口碑' : l + ' 个口味方向');
+  const verdictOf = (ratio) => (ratio <= 0.8 ? 'good' : ratio <= 0.95 ? 'some' : 'weak');
+  const STAMP = { good: '猜得有谱', some: '比平均强一点', weak: '不如直接看平均' };
+
+  function core(D) {
+    const nP = D.people.length, nI = D.items.length;
+    const m = fit(nP, nI, D.known, D.rank, D.lambda);
+    const G = D.R.map((row, u) => row.map((x, i) => ({ known: x != null, r: x, g: clip(raw(m, u, i), D.lo, D.hi), raw: raw(m, u, i) })));
+    const levels = [-1];
+    for (let l = 0; l <= Math.min(3, Math.min(nP, nI) - 1); l++) levels.push(l);
+    /* 留一时每次都从同一个固定种子重新拟合，不借用含被藏格子的整表结果，避免把答案漏给自己 */
+    const cv = levels.map((l) => loo(D, l, D.lambda));
+    let best = cv[0]; cv.forEach((x) => { if (x.mae < best.mae - 1e-12) best = x; });
+    const cur = cv.find((x) => x.level === D.rank), base = cv[0];
+    const ratio = cur.mae / base.mae;
+    const verdict = verdictOf(ratio);
+    /* 每个人没看过的里猜分最高的（并列取表里靠前的） */
+    const perPerson = D.people.map((nm, u) => {
+      const un = G[u].map((x, i) => ({ i, g: x.g, known: x.known })).filter((x) => !x.known);
+      un.sort((a, b2) => b2.g - a.g || a.i - b2.i);
+      return { u, name: nm, unseen: un.length, best: un[0] || null, second: un[1] || null };
+    });
+    /* 一起看：候选 = 这群人都没看过的；没有就全部。用已打的真实分，没打的用猜分 */
+    const fresh = D.items.map((x, i) => i).filter((i) => D.group.every((u) => !G[u][i].known));
+    const pool = fresh.length ? fresh : D.items.map((x, i) => i);
+    const gs = pool.map((i) => {
+      const v = D.group.map((u) => (G[u][i].known ? G[u][i].r : G[u][i].g));
+      const mean = v.reduce((s, x) => s + x, 0) / v.length, mn = Math.min(...v);
+      const low = D.group[v.indexOf(mn)];
+      return { i, mean, min: mn, low, vals: v };
+    });
+    const key = (x) => (D.rule === 'mean' ? [x.mean, x.min] : [x.min, x.mean]);
+    gs.sort((a, b2) => { const ka = key(a), kb = key(b2); return kb[0] - ka[0] || kb[1] - ka[1] || a.i - b2.i; });
+    const svd = svdTaste(m, nP, nI);
+    const sv2 = svd.sv.reduce((s, x) => s + x * x, 0);
+    const R = { D, m, G, cv, best, cur, base, ratio, verdict, stamp: STAMP[verdict], perPerson, fresh: fresh.length > 0, gs, pick: gs[0], svd, share: svd.sv.map((x) => (sv2 > 0 ? x * x / sv2 : 0)),
+      nKnown: D.known.length, nBlank: nP * nI - D.known.length };
+    R.summary = summary(R); R.facts = facts(R);
+    return R;
+  }
+  function who(R, list) { return list.length === R.D.people.length ? '全部 ' + list.length + ' 人' : list.map((u) => R.D.people[u]).join('、'); }
+  function summary(R) {
+    const D = R.D, pk = R.pick, it = D.items;
+    let a = '按「' + LEVEL_NAME(D.rank) + '」把 ' + R.nBlank + ' 个空格猜上。';
+    a += who(R, D.group) + '一起看' + (R.fresh ? '' : '（没有大家都没看过的，从全部里挑）') + '，挑「' + it[pk.i] + '」：平均 ' + f1(pk.mean) + ' 分，最低的' + D.people[pk.low] + '也有 ' + f1(pk.min) + ' 分。';
+    a += '留一验算平均差 ' + f2(R.cur.mae) + ' 分，只看全体平均差 ' + f2(R.base.mae) + ' 分。';
+    return a;
+  }
+  function facts(R) {
+    const D = R.D, F = [];
+    R.perPerson.forEach((p) => {
+      if (!p.best) F.push(p.name + '：表里的都打过分了，没有要猜的');
+      else F.push(p.name + '：没打分的 ' + p.unseen + ' 个里，最可能喜欢「' + D.items[p.best.i] + '」（猜 ' + f1(p.best.g) + ' 分）' + (p.second ? '，其次「' + D.items[p.second.i] + '」' + f1(p.second.g) + ' 分' : ''));
+    });
+    const lv = R.cv.map((x) => LEVEL_NAME(x.level) + ' ' + f2(x.mae)).join('，');
+    F.push('留一验算（每个打过的分轮流藏起来再猜）平均差：' + lv + '；验算最准的是「' + LEVEL_NAME(R.best.level) + '」');
+    if (R.svd.sv.length) F.push('口味方向撑起的份额：' + R.share.map((s, j) => '方向' + '一二三'[j] + ' ' + fmt(s * 100, 0) + '%').join('，'));
+    const runner = R.gs[1];
+    if (runner) F.push('一起看第二选择是「' + D.items[runner.i] + '」：平均 ' + f1(runner.mean) + '、最低 ' + f1(runner.min) + ' 分（按' + (D.rule === 'mean' ? '平均分' : '最低的人') + '排）');
+    return F;
+  }
+  function calculate(inp) { return core(parse(inp)); }
+
+  /* ── 可代回的建议 ── */
+  function brief(R2) { return '挑「' + R2.D.items[R2.pick.i] + '」，平均 ' + f1(R2.pick.mean) + '、最低 ' + f1(R2.pick.min) + ' 分，验算差 ' + f2(R2.cur.mae) + ' 分'; }
+  function suggestions(inp, R) {
+    const out = [];
+    const tryOne = (id, patch, label) => {
+      const apply = Object.assign({}, inp, patch);
+      try { const R2 = calculate(apply); out.push({ id, text: label + '：' + brief(R2), apply, R2 }); } catch (e) { /* 算不出就不给 */ }
+    };
+    if (R.best.level >= 0 && R.best.level !== R.D.rank) tryOne('best', { rank: String(R.best.level) }, '改用验算最准的「' + LEVEL_NAME(R.best.level) + '」');
+    tryOne('rule', { rule: R.D.rule === 'mean' ? 'min' : 'mean' }, R.D.rule === 'mean' ? '改成照顾最低的人' : '改成看平均分');
+    if (R.D.group.length > 2) {
+      const low = R.pick.low;
+      const rest = R.D.group.filter((u) => u !== low).map((u) => R.D.people[u]).join(' ');
+      tryOne('drop', { group: rest }, '这次' + R.D.people[low] + '不来');
+    }
+    return out;
+  }
+
+  /* ── 导出 ── */
+  function csvEsc(s) { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+  function toCSV(R, stamp) {
+    const D = R.D;
+    const L = ['替他打个分 生成时间 ' + stamp + ' 模型 ' + LEVEL_NAME(D.rank) + ' λ ' + fmt(D.lambda, 2) + ' 分数 ' + fmt(D.lo, 2) + '-' + fmt(D.hi, 2) + ' ' + R.stamp];
+    L.push(['谁', '片子', '打过的分', '猜分', '是否猜的'].join(','));
+    D.people.forEach((p, u) => D.items.forEach((it, i) => { const x = R.G[u][i]; L.push([p, it, x.known ? fmt(x.r, 2) : '', fmt(x.g, 3), x.known ? '否' : '是'].map(csvEsc).join(',')); }));
+    L.push('', ['留一验算', '平均差', '均方根差'].join(','));
+    R.cv.forEach((x) => L.push([LEVEL_NAME(x.level), fmt(x.mae, 4), fmt(x.rmse, 4)].map(csvEsc).join(',')));
+    return L.join('\n') + '\n';
+  }
+  function toMD(R, stamp, sg) {
+    const D = R.D;
+    const L = ['# 替他打个分', '', '生成时间：' + stamp + '　模型 ' + LEVEL_NAME(D.rank) + '｜λ ' + fmt(D.lambda, 2) + '｜分数 ' + fmt(D.lo, 2) + '–' + fmt(D.hi, 2), '', '**' + R.stamp + '：' + R.summary + '**', ''];
+    R.facts.forEach((f) => L.push('- ' + f));
+    L.push('', '## 填好的表（带 * 的是猜的）', '', '| 谁 | ' + D.items.map((x) => x.replace(/\|/g, '／')).join(' | ') + ' |', '|' + '---|'.repeat(D.items.length + 1));
+    D.people.forEach((p, u) => L.push('| ' + p.replace(/\|/g, '／') + ' | ' + R.G[u].map((x) => (x.known ? fmt(x.r, 2) : f1(x.g) + '*')).join(' | ') + ' |'));
+    if (sg && sg.length) { L.push('', '## 换个算法', ''); sg.forEach((s) => L.push('- ' + s.text)); }
+    L.push('', '猜分只按这张表里大家打过的分推出来，片名和分数是你填的（默认例子是虚构的）；表越小、空格越多，猜得越不准，看留一验算的平均差。');
+    return L.join('\n') + '\n';
+  }
+
+  const DEFAULT = {
+    data: [
+      '谁 追击七号 深海营救 星际返航 夏天的信 慢慢走 雨停以后 笑到最后 老街坊',
+      '爸 5 4 - 2 - 1 4 3',
+      '妈 1 - 2 5 4 - 3 5',
+      '阿杰 5 5 4 - 2 1 - -',
+      '小雨 - 2 3 5 - 4 4 -',
+      '奶奶 2 1 - - 5 4 3 5',
+      '表哥 4 - 5 2 1 - 5 -',
+    ].join('\n'),
+    lo: '1', hi: '5', rank: '2', lambda: '1', group: '', rule: 'mean',
+  };
+  const PRESETS = [
+    ['默认：一家人挑电影', DEFAULT],
+    ['照顾最低的人', Object.assign({}, DEFAULT, { rule: 'min', group: '爸 妈 奶奶 小雨' })],
+    ['空格太多', { data: '谁 甲店 乙店 丙店 丁店 戊店\n小李 5 - - 2 -\n小王 - 4 - - 1\n小张 3 - 4 - -\n小赵 - - 2 5 -', lo: '1', hi: '5', rank: '1', lambda: '1', group: '', rule: 'mean' }],
+    ['十分制', { data: '谁,第一章,第二章,第三章,第四章,第五章\n甲,8,7.5,,6,9\n乙,6,,7,8,\n丙,,9,8.5,,7\n丁,9,8,,5,', lo: '0', hi: '10', rank: '1', lambda: '1', group: '', rule: 'min' }],
+  ];
+  const api = { DEFAULT, PRESETS, KEYS, MAX_P, MAX_I, parse, calculate, suggestions, toCSV, toMD, fit, raw, loo, solve, jacobi, svdTaste, clip, fmt, f1, f2, LEVEL_NAME, STAMP, verdictOf, rng };
+  if (typeof module === 'object' && module.exports) module.exports = api; else root.AppCore = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+  </script>
+  <script>
+/* 替他打个分 · 界面层 */
+(function () {
+  'use strict';
+  const C = window.AppCore;
+  const KEY = 'score-for-him:v1';
+  const NAME = '替他打个分';
+  const copy = (o) => JSON.parse(JSON.stringify(o));
+  const DEFAULT = C.DEFAULT, PRESETS = C.PRESETS, KEYS = C.KEYS;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const FF = '"PingFang SC","Microsoft YaHei",sans-serif';
+  const f1 = C.f1, f2 = C.f2;
+  let state = copy(DEFAULT);
+  let last = null;
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 隐私模式忽略 */ } }
+  function load() {
+    try {
+      const o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+      const s = {};
+      for (const k of KEYS) { if (o[k] == null || typeof o[k] === 'object') return null; s[k] = String(o[k]).slice(0, 4000); }
+      if (!/^[0-3]$/.test(s.rank) || (s.rule !== 'mean' && s.rule !== 'min')) return null;
+      return s;
+    } catch (e) { return null; }
+  }
+  function fill() { KEYS.forEach((k) => { $(k).value = state[k]; }); }
+
+  /* 分数 → 颜色：低红、中米、高绿 */
+  function mix(a, b, t) { return a.map((x, i) => Math.round(x + (b[i] - x) * t)); }
+  function colorOf(v, lo, hi) {
+    const t = Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
+    const c = t < 0.5 ? mix([196, 85, 58], [239, 230, 218], t * 2) : mix([239, 230, 218], [63, 138, 95], (t - 0.5) * 2);
+    return { bg: 'rgb(' + c.join(',') + ')', fg: t < 0.18 || t > 0.82 ? '#fff' : '#2b2622' };
+  }
+  function bestSet(R) { const s = new Set(); R.perPerson.forEach((p) => { if (p.best) s.add(p.u + ':' + p.best.i); }); return s; }
+  function renderGrid(R) {
+    const D = R.D, bs = bestSet(R), inG = new Set(D.group);
+    let h = '<tr><th></th>' + D.items.map((x, i) => '<th class="' + (i === R.pick.i ? 'pick' : '') + '" title="' + esc(x) + '">' + esc(x) + '</th>').join('') + '</tr>';
+    D.people.forEach((p, u) => {
+      h += '<tr class="' + (inG.has(u) ? 'inG' : '') + '"><th class="row" title="' + esc(p) + '">' + esc(p) + '</th>';
+      R.G[u].forEach((x, i) => {
+        const v = x.known ? x.r : x.g, c = colorOf(v, D.lo, D.hi);
+        h += '<td class="' + (x.known ? '' : 'g') + (bs.has(u + ':' + i) ? ' best' : '') + '" style="background:' + c.bg + ';color:' + c.fg + '" title="' + esc(p + ' · ' + D.items[i] + (x.known ? ' 打过 ' : ' 猜 ') + (x.known ? C.fmt(x.r, 2) : f2(x.g))) + '">' + (x.known ? C.fmt(x.r, 1) : f1(x.g)) + '</td>';
+      });
+      h += '</tr>';
+    });
+    $('grid').innerHTML = h;
+  }
+  function renderCV(R) {
+    const mx = Math.max(...R.cv.map((x) => x.mae)) || 1;
+    $('cv').innerHTML = R.cv.map((x) => '<div class="cvRow' + (x.level === R.D.rank ? ' cur' : '') + (x === R.best ? ' best' : '') + '"><span>' + esc(C.LEVEL_NAME(x.level)) + (x.level === R.D.rank ? '（现在）' : '') + '</span><div class="bar"><i style="width:' + (x.mae / mx * 100).toFixed(1) + '%"></i></div><span>' + f2(x.mae) + ' 分</span></div>').join('');
+    $('cvNote').textContent = '共验 ' + R.nKnown + ' 个打过的分；现在用的「' + C.LEVEL_NAME(R.D.rank) + '」是只看全体平均的 ' + C.fmt(R.ratio * 100, 0) + '%，盖章「' + R.stamp + '」。验算最准的是「' + C.LEVEL_NAME(R.best.level) + '」。';
+  }
+  /* 口味地图：rank ≥ 2 画二维，rank = 1 画一条轴 */
+  function drawMap(g, R, X, Y, W, H, fs) {
+    const D = R.D, S = R.svd, k = S.sv.length;
+    g.fillStyle = '#faf7f3'; g.fillRect(X, Y, W, H);
+    if (!k) { g.fillStyle = '#857a6e'; g.font = (14 * fs) + 'px ' + FF; g.textAlign = 'center'; g.fillText('现在只用「平均+偏好+口碑」，没有口味方向可画', X + W / 2, Y + H / 2); g.textAlign = 'left'; return; }
+    const two = k >= 2;
+    const ppl = D.people.map((p, u) => [S.U[u][0] * Math.sqrt(S.sv[0]), two ? S.U[u][1] * Math.sqrt(S.sv[1]) : 0]);
+    const its = D.items.map((x, i) => [S.V[i][0] * Math.sqrt(S.sv[0]), two ? S.V[i][1] * Math.sqrt(S.sv[1]) : 0]);
+    const all = ppl.concat(its);
+    const m = Math.max(1e-9, ...all.map((p) => Math.max(Math.abs(p[0]), two ? Math.abs(p[1]) : 0)));
+    const pad = 30 * fs, cx = X + W / 2, cy = Y + H / 2, sx = (W / 2 - pad - 50 * fs) / m, sy = two ? (H / 2 - pad) / m : 0;
+    g.strokeStyle = '#ddd2c4'; g.lineWidth = 1; g.beginPath(); g.moveTo(X + pad, cy); g.lineTo(X + W - pad, cy); if (two) { g.moveTo(cx, Y + pad / 2); g.lineTo(cx, Y + H - pad / 2); } g.stroke();
+    const placed = [];
+    /* 坐标轴说明放在左下角和中上方，并登记占位，名字标签会避开它们 */
+    g.fillStyle = '#857a6e'; g.font = (11 * fs) + 'px ' + FF;
+    { const t = '横轴：方向一（' + C.fmt(R.share[0] * 100, 0) + '%）', tw = g.measureText(t).width, lx = X + 6 * fs, ly = Y + H - 6 * fs; g.fillText(t, lx, ly); placed.push([lx, ly, tw, 13 * fs]); }
+    if (two) { const t = '竖轴：方向二（' + C.fmt(R.share[1] * 100, 0) + '%）', tw = g.measureText(t).width, lx = X + 6 * fs, ly = Y + 14 * fs; g.fillText(t, lx, ly); placed.push([lx, ly, tw, 13 * fs]); }
+    const label = (t, x, y, col, bold) => {
+      g.font = (bold ? 'bold ' : '') + (12 * fs) + 'px ' + FF;
+      const s = t.length > 8 ? t.slice(0, 7) + '…' : t, tw = g.measureText(s).width, hgt = 14 * fs;
+      let lx = Math.min(Math.max(x + 7 * fs, X + 2), X + W - tw - 2), ly = y + 4 * fs;
+      for (let tries = 0; tries < 12; tries++) {
+        const hit = placed.some((b) => lx < b[0] + b[2] && lx + tw > b[0] && ly - hgt < b[1] && ly > b[1] - b[3]);
+        if (!hit) break; ly += (tries % 2 ? -1 : 1) * (tries + 1) * hgt * 0.9;
+      }
+      ly = Math.min(Math.max(ly, Y + hgt), Y + H - 3);
+      placed.push([lx, ly, tw, hgt]);
+      g.fillStyle = col; g.fillText(s, lx, ly);
+    };
+    const yy = (p, i) => (two ? cy - p[1] * sy : cy + (i % 2 ? 1 : -1) * 0);
+    its.forEach((p, i) => { const x = cx + p[0] * sx, y = yy(p, i); g.fillStyle = i === R.pick.i ? '#8a4b2a' : '#c9a68c'; g.fillRect(x - 5 * fs, y - 5 * fs, 10 * fs, 10 * fs); });
+    ppl.forEach((p, u) => { const x = cx + p[0] * sx, y = yy(p, u); g.fillStyle = '#2f5d7c'; g.beginPath(); g.arc(x, y, 6 * fs, 0, 7); g.fill(); });
+    its.forEach((p, i) => label(D.items[i], cx + p[0] * sx, yy(p, i), i === R.pick.i ? '#8a4b2a' : '#7a5a44', i === R.pick.i));
+    ppl.forEach((p, u) => label(D.people[u], cx + p[0] * sx, yy(p, u), '#2f5d7c', true));
+  }
+  function renderMap(R) {
+    const cv = $('map'), w = Math.max(280, Math.min(960, cv.parentNode.clientWidth - 28 || 960)), h = Math.round(w * (w < 500 ? 0.8 : 0.5));
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.height = h + 'px';
+    const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    drawMap(g, R, 0, 0, w, h, 1);
+    const k = R.svd.sv.length;
+    $('mapNote').textContent = !k ? '方向数选 1 或以上才有口味地图。' : '圆点是人，方块是片子。' + (k > 2 ? '只画了前两个方向，第三个方向占 ' + C.fmt(R.share[2] * 100, 0) + '%。' : k === 1 ? '只有一个方向，画成一条轴。' : '');
+  }
+  function sugList(sg) {
+    const box = $('sugs'); box.innerHTML = '';
+    sg.forEach((x) => {
+      const d = document.createElement('div'); d.className = 'sug';
+      d.innerHTML = '<span>' + esc(x.text) + '</span>';
+      const bt = document.createElement('button'); bt.textContent = '照这样算'; bt.dataset.sug = x.id;
+      bt.addEventListener('click', () => { state = copy(x.apply); fill(); run(); });
+      d.appendChild(bt); box.appendChild(d);
+    });
+    $('sugCard').style.display = sg.length ? '' : 'none';
+  }
+  function run() {
+    [].forEach.call(document.querySelectorAll('.bad'), (e) => e.classList.remove('bad'));
+    try {
+      const R = C.calculate(state);
+      const sg = C.suggestions(state, R);
+      $('error').style.display = 'none'; $('out').style.display = '';
+      $('stamp').textContent = R.stamp; $('stamp').className = 'stamp ' + R.verdict;
+      $('sumTxt').textContent = R.summary;
+      $('k1').textContent = (R.D.groupAll ? '全部 ' + R.D.group.length + ' 人' : R.D.group.length + ' 人') + '一起看挑';
+      $('v1').textContent = R.D.items[R.pick.i];
+      $('v2').textContent = R.nBlank + ' 个';
+      $('v3').textContent = f2(R.cur.mae) + ' 分';
+      $('facts').innerHTML = R.facts.map((f) => '<li>' + esc(f) + '</li>').join('');
+      last = { r: R, sg };
+      renderGrid(R); renderCV(R); renderMap(R); sugList(sg);
+    } catch (e) {
+      last = null;
+      if (e.field) { const el = $(e.field); if (el) el.classList.add('bad'); }
+      $('error').textContent = '算不了：' + e.message; $('error').style.display = 'block';
+      $('out').style.display = 'none';
+    }
+    save();
+  }
+
+  /* ── 导出 ── */
+  function stamp() { const d = new Date(), z = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); }
+  function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+  function wrap(g, t, w) {
+    const NOHEAD = '，。、；：！？）」』%·→｜';
+    const out = []; let line = [];
+    const toks = String(t).match(/[0-9][0-9.]*(%|\s?(个|分|人|部))?|[A-Za-z_][A-Za-z0-9_.\-]*|[\s\S]/g) || [];
+    const width = (a) => g.measureText(a.join('')).width;
+    for (const tk of toks) {
+      if (line.length && width(line.concat([tk])) > w) {
+        let carry = [tk];
+        while (line.length > 1 && (NOHEAD.indexOf(carry[0][0]) >= 0 || '（「『'.indexOf(line[line.length - 1]) >= 0)) carry.unshift(line.pop());
+        out.push(line.join(''));
+        line = carry; if (/^\s+$/.test(line[0])) line.shift();
+      } else line.push(tk);
+    }
+    if (line.length) out.push(line.join('')); return out;
+  }
+  /* 名字放不下时留头尾、中间省略，长名字之间才分得开 */
+  function fitMid(g, t, w) { const s = String(t); if (g.measureText(s).width <= w) return s; for (let n = s.length - 1; n >= 2; n--) { const a = Math.ceil(n / 2), b = n - a, r = s.slice(0, a) + '…' + s.slice(s.length - b); if (g.measureText(r).width <= w) return r; } return s.slice(0, 1) + '…'; }
+  function fitText(g, t, w) { let s = String(t); if (g.measureText(s).width <= w) return s; while (s.length > 1 && g.measureText(s + '…').width > w) s = s.slice(0, -1); return s + '…'; }
+  function drawPNG(Lx) {
+    const R = Lx.r, D = R.D;
+    const Wd = 1080, H = 1350, X = 64, TW = 952;
+    const cv = document.createElement('canvas'); cv.width = Wd; cv.height = H;
+    const g = cv.getContext('2d');
+    g.fillStyle = '#f4f1ec'; g.fillRect(0, 0, Wd, H);
+    g.fillStyle = '#ffffff'; g.fillRect(32, 32, Wd - 64, H - 64);
+    g.fillStyle = '#8a4b2a'; g.fillRect(32, 32, Wd - 64, 10);
+    g.fillStyle = '#5e554c'; g.font = '24px ' + FF;
+    g.fillText(fitText(g, NAME + ' · ' + C.LEVEL_NAME(D.rank) + ' · λ ' + C.fmt(D.lambda, 2) + ' · ' + D.people.length + ' 人 × ' + D.items.length + ' 个', TW - 250), X, 96);
+    g.save(); g.translate(X + TW - 120, 88); g.rotate(-0.06);
+    const col = R.verdict === 'good' ? '#2f6b4f' : R.verdict === 'some' ? '#a5741d' : '#b3412f';
+    g.strokeStyle = g.fillStyle = col; g.lineWidth = 4; g.strokeRect(-118, -30, 236, 52);
+    g.font = 'bold 26px ' + FF; g.textAlign = 'center'; g.fillText(fitText(g, R.stamp, 220), 0, 5); g.restore();
+    const box = (x, w, k, v, main) => {
+      g.fillStyle = main ? '#fbeee4' : '#f7f3ee'; g.fillRect(x, 128, w, 140);
+      if (main) { g.strokeStyle = '#8a4b2a'; g.lineWidth = 3; g.strokeRect(x, 128, w, 140); }
+      g.fillStyle = '#5e554c'; g.font = '22px ' + FF; g.fillText(fitText(g, k, w - 36), x + 18, 164);
+      g.fillStyle = '#2b2622'; g.font = 'bold 46px ' + FF; g.fillText(fitMid(g, v, w - 36), x + 18, 232);
+    };
+    const bw = (TW - 32) / 3;
+    box(X, bw, $('k1').textContent, D.items[R.pick.i], true);
+    box(X + bw + 16, bw, '猜上的空格', R.nBlank + ' 个', false);
+    box(X + 2 * (bw + 16), bw, '验算平均差', f2(R.cur.mae) + ' 分', false);
+    let y = 314;
+    g.fillStyle = '#2b2622'; g.font = 'bold 24px ' + FF;
+    let sl = wrap(g, R.summary, TW); if (sl.length > 3) { g.font = 'bold 21px ' + FF; sl = wrap(g, R.summary, TW); }
+    if (sl.length > 4) { sl = sl.slice(0, 4); sl[3] = fitText(g, sl[3] + '……', TW - 10); }
+    sl.forEach((l) => { g.fillText(l, X, y); y += 34; });
+    y += 6;
+    /* 表 */
+    const nP = D.people.length, nI = D.items.length;
+    const nameW = 120, cw = Math.min(90, Math.floor((TW - nameW) / nI) - 4), ch = Math.min(46, Math.floor(330 / (nP + 1)));
+    g.font = '15px ' + FF;
+    D.items.forEach((it, i) => {
+      const x = X + nameW + i * (cw + 4);
+      if (i === R.pick.i) { g.fillStyle = '#8a4b2a'; g.fillRect(x, y, cw, ch - 6); g.fillStyle = '#fff'; } else g.fillStyle = '#5e554c';
+      const t = fitMid(g, it, cw - 6); g.textAlign = 'center'; g.fillText(t, x + cw / 2, y + ch / 2 + 2); g.textAlign = 'left';
+    });
+    y += ch;
+    const bs = bestSet(R), inG = new Set(D.group);
+    D.people.forEach((p, u) => {
+      g.fillStyle = inG.has(u) ? '#8a4b2a' : '#2b2622'; g.font = 'bold 17px ' + FF; g.fillText(fitMid(g, p, nameW - 10), X, y + ch / 2 + 4);
+      R.G[u].forEach((x, i) => {
+        const cx = X + nameW + i * (cw + 4), v = x.known ? x.r : x.g, c = colorOf(v, D.lo, D.hi);
+        g.fillStyle = c.bg; g.fillRect(cx, y, cw, ch - 4);
+        if (!x.known) { g.strokeStyle = '#8a4b2a'; g.lineWidth = 2; g.setLineDash([5, 3]); g.strokeRect(cx + 1, y + 1, cw - 2, ch - 6); g.setLineDash([]); }
+        if (bs.has(u + ':' + i)) { g.strokeStyle = '#2b2622'; g.lineWidth = 3; g.strokeRect(cx + 3, y + 3, cw - 6, ch - 10); }
+        g.fillStyle = c.fg; g.font = (x.known ? 'bold ' : 'italic ') + Math.max(14, Math.min(19, ch - 14)) + 'px ' + FF; g.textAlign = 'center';
+        g.fillText(x.known ? C.fmt(x.r, 1) : f1(x.g), cx + cw / 2, y + ch / 2 + 4); g.textAlign = 'left';
+      });
+      y += ch;
+    });
+    y += 10; g.fillStyle = '#857a6e'; g.font = '16px ' + FF; g.fillText('虚线框 = 猜的　黑框 = 他没看过的里猜分最高的　棕色表头 = 一起看挑的', X, y + 10);
+    y += 58;
+    /* 验算条 */
+    g.fillStyle = '#2b2622'; g.font = 'bold 19px ' + FF; g.fillText('留一验算平均差（越短越准）', X, y); y += 12;
+    const mx = Math.max(...R.cv.map((x) => x.mae)) || 1;
+    R.cv.forEach((x) => {
+      y += 30;
+      g.fillStyle = '#5e554c'; g.font = (x.level === D.rank ? 'bold ' : '') + '17px ' + FF; g.fillText(C.LEVEL_NAME(x.level) + (x.level === D.rank ? '（现在）' : ''), X, y);
+      g.fillStyle = '#f1ebe4'; g.fillRect(X + 230, y - 15, TW - 330, 16);
+      g.fillStyle = x.level === D.rank ? '#8a4b2a' : '#c9a68c'; g.fillRect(X + 230, y - 15, (TW - 330) * x.mae / mx, 16);
+      g.fillStyle = '#2b2622'; g.textAlign = 'right'; g.fillText(f2(x.mae) + ' 分', X + TW, y); g.textAlign = 'left';
+    });
+    y += 34;
+    g.font = '18px ' + FF; g.fillStyle = '#2b2622';
+    const items = R.facts.filter((f) => !/^留一验算/.test(f)).concat(Lx.sg.map((q) => '换个算法：' + q.text));
+    let shown = 0;
+    for (const f of items) {
+      const ls = wrap(g, '· ' + f, TW);
+      if (y + (ls.length - 1) * 26 > H - 140) break;
+      ls.forEach((l) => { g.fillText(l, X, y); y += 26; }); y += 3; shown++;
+    }
+    if (shown < items.length) { g.fillStyle = '#857a6e'; g.font = '17px ' + FF; g.fillText('…… 还有 ' + (items.length - shown) + ' 条写不下，见页面或 Markdown 导出', X, Math.min(y + 2, H - 112)); }
+    g.fillStyle = '#857a6e'; g.font = '18px ' + FF;
+    ['猜分只按这张表里打过的分推出来；默认例子的片名和分数是虚构的。', '表越小、空格越多越不准，以留一验算的平均差为准。'].forEach((l, i) => g.fillText(l, X, H - 80 + i * 27));
+    return Promise.resolve(cv);
+  }
+  function backup() {
+    const R = last.r, D = R.D;
+    return { app: NAME, version: 1, savedAt: stamp(), input: copy(state), result: { summary: R.summary, verdict: R.verdict, stamp: R.stamp,
+      pick: D.items[R.pick.i], pickMean: R.pick.mean, pickMin: R.pick.min, group: D.group.map((u) => D.people[u]), blanks: R.nBlank, known: R.nKnown,
+      looMae: R.cv.map((x) => ({ model: C.LEVEL_NAME(x.level), mae: x.mae, rmse: x.rmse })), best: C.LEVEL_NAME(R.best.level),
+      share: R.share, people: D.people, items: D.items,
+      cells: D.people.map((p, u) => D.items.map((it, i) => ({ known: R.G[u][i].known, score: R.G[u][i].known ? R.G[u][i].r : null, guess: R.G[u][i].g }))) } };
+  }
+  function init() {
+    /* 文本框连续输入时等 150 毫秒再算（10 人 × 12 部、3 个方向的留一验算要几秒） */
+    let dt = null;
+    KEYS.forEach((k) => { const el = $(k); el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => { state[k] = el.value; save(); if (el.tagName === 'SELECT') { clearTimeout(dt); run(); } else { clearTimeout(dt); dt = setTimeout(run, 150); } }); });
+    PRESETS.forEach((p) => {
+      const b = document.createElement('button'); b.className = 'ghost'; b.textContent = p[0];
+      b.addEventListener('click', () => { state = copy(p[1]); fill(); run(); });
+      $('presets').appendChild(b);
+    });
+    $('reset').addEventListener('click', () => { state = copy(DEFAULT); fill(); run(); });
+    $('dlCSV').addEventListener('click', () => { if (last) download(NAME + '.csv', new Blob(['\ufeff' + C.toCSV(last.r, stamp())], { type: 'text/csv;charset=utf-8' })); });
+    $('dlMD').addEventListener('click', () => { if (last) download(NAME + '.md', new Blob([C.toMD(last.r, stamp(), last.sg)], { type: 'text/markdown;charset=utf-8' })); });
+    $('dlJSON').addEventListener('click', () => { if (last) download(NAME + '-备份.json', new Blob([JSON.stringify(backup(), null, 2)], { type: 'application/json' })); });
+    $('dlPNG').addEventListener('click', () => { if (last) drawPNG(last).then((cv) => cv.toBlob((b) => download(NAME + '-1080x1350.png', b), 'image/png')); });
+    let rt = null; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (last) renderMap(last.r); }, 150); });
+    state = load() || copy(DEFAULT);
+    fill(); run();
+    window.__ex = { last: () => last, state: () => state, presets: PRESETS, DEFAULT, drawPNG, backup };
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+
+  </script>
+</body>
+</html>
